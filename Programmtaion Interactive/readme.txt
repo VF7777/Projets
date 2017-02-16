@@ -1,20 +1,12 @@
 Hello madam, sir,
 
-How to use this application:
-Open File -> open a picture
-Open Folder -> open a Folder contains some pictures
-Delete->clear the pictures
+To launch this program in Eclipse, we need the library SwingStates and add it to your Java project. In Eclipse: Right click on the Project> Java Build Path> Libraries> Add External JARs.
 
-Double click on a picture for flipping to annotate, 
-On the right toolbar, we can draw four types shapes,
-write text, we can also change shapes’ outline color
-and fill color. Choosing Select/Move to select/move a 
-shape on canvas. Click button ‘Back to Browser’ can 
-back to browser mode.
+We must add the two folders "rsc" and "resources" in your project too, in the same directory of src folder. I defined the gestures in the rsc/vocabulaire.cl file.
 
-Click view->Browser mode, we can also back to browser mode. 
+To launch the jar file in the folder original, because it needs the icons in folder resources.
 
 
 Thank you
 
-Yang CHEN
+Yang CHEN and Yiran ZHANG
