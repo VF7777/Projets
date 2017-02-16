@@ -1,0 +1,655 @@
+#!/usr/bin/perl -w
+
+#***************************************************************************
+# File: Bones-control-gtk.prl
+#
+# Virtual Humans
+# Master in Computer Science
+# Christian Jacquemin, University Paris 11
+#
+# Copyright (C) 2008 University Paris 11 
+# This file is provided without support, instruction, or implied
+# warranty of any kind.  University Paris 11 makes no guarantee of its
+# fitness for a particular purpose and is not liable under any
+# circumstances for any damages or loss whatsoever arising from the use
+# or inability to use this file or items derived from it.
+#****************************************************************************
+
+# http://www.gtk.org/tutorial1.2/
+# http://gtk2-perl.sourceforge.net/doc/intro/
+# http://gtk2-perl.sourceforge.net/doc/pod/
+# http://gtk2-perl.sourceforge.net/doc/gtk2-perl-tut/
+# http://pagesperso-orange.fr/gtk2-perl/Gtk2perl_tutoriel.html
+
+use strict ;
+
+use Gtk2 '-init' ;
+
+use constant TRUE => 1 ;
+use constant FALSE => 0 ;
+
+use POSIX qw(locale_h);
+use locale;
+
+setlocale(LC_CTYPE, "en_US");
+
+setlocale LC_NUMERIC, "";
+
+# This program generates an interface for the definition
+# of keyframes for a bone-based animation
+
+# the program takes as input a cpp file that contains
+# - 1 table of K strings associated with K bones
+# - 3 tables of K F-dimensional float arrays (F is the number of keyframes)
+#   each table is associated with 1 coordinate
+# the format of the file is as follows for 4 bones and 10 frames
+
+# char tab_ID[4][16] = { "8.1" , "8.2" , "8.3" , "8.4" };
+# float tab_KF_x[4][10] = { 
+# { 0.01 , 0.02 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 } ,
+# { 0.00 , 0.00 , 0.03 , 0.04 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 } ,
+# { 0.00 , 0.00 , 0.00 , 0.00 , 0.05 , 0.06 , 0.00 , 0.00 , 0.00 , 0.00 } ,
+# { 0.00 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 , 0.07 , 0.08 , 0.00 , 0.00 } 
+#  }; 
+# float tab_KF_y[4][10] = { 
+# { 0.09 , 0.08 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 } ,
+# { 0.00 , 0.00 , 0.07 , 0.06 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 } ,
+# { 0.00 , 0.00 , 0.00 , 0.00 , 0.05 , 0.04 , 0.00 , 0.00 , 0.00 , 0.00 } ,
+# { 0.00 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 , 0.03 , 0.02 , 0.00 , 0.00 } 
+#  }; 
+# float tab_KF_z[4][10] = { 
+# { 0.04 , 0.05 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 } ,
+# { 0.00 , 0.00 , 0.07 , 0.09 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 } ,
+# { 0.00 , 0.00 , 0.00 , 0.00 , 0.01 , 0.03 , 0.00 , 0.00 , 0.00 , 0.00 } ,
+# { 0.00 , 0.00 , 0.00 , 0.00 , 0.00 , 0.00 , 0.02 , 0.08 , 0.00 , 0.00 } 
+#  }; 
+
+# the interface contains 2 menus to select a bone k and a frame number f
+# and 3 sliders to modify the x y z coordinates of the k-th bone
+# at frame f
+# each time a value is modified, a message is sent to the
+# animation application so that it can update the keyframe graphics.
+
+# a new data structure is automatically generated when quitting
+# the application. It never overlaps the existing data and 
+# creates successive versions of the data.
+
+
+###############################################################
+#      SOCKET FOR UDP CONNECTION
+###############################################################
+my $HOSTNAME = "127.0.0.1";
+my $PORTNO = "1979";
+use Socket;
+socket(SOCKET, PF_INET, SOCK_DGRAM, getprotobyname("udp")) 
+    or die "socket: $!";
+my $ipaddr   = inet_aton($HOSTNAME);
+my $portaddr = sockaddr_in($PORTNO, $ipaddr);
+
+
+###############################################################
+#      WORKING VARIABLES
+###############################################################
+# list of bone ID
+my @Bones_ID_list;
+# current key-point ID
+my $Cur_Bones_ID = "";
+# number of keyframes
+my $Nb_Keyframes = 10;
+#current keyframe
+my $Cur_KF = 1;
+#bone rotations
+my %Bones_Angle;
+my %Bones_Axis_x;
+my %Bones_Axis_y;
+my %Bones_Axis_z;
+#message emission (postponed to avoid duplicates in case
+# of mutiple value assignments)
+my $message_output = TRUE;
+
+###############################################################
+#      LOADS EXISTING ANIMATION
+###############################################################
+&load_KFs;
+
+###############################################################
+###############################################################
+#      BUILDS THE INTERFACE AND ATTACHES CALLBACK FUNCTIONS
+###############################################################
+###############################################################
+# Window creation
+my $window = Gtk2::Window->new( "toplevel" ) ;
+$window->set_title( "Posture editor" ) ;
+$window->set_default_size(300,300);
+$window->signal_connect( "destroy" , sub { Gtk2->main_quit ; } ) ;
+
+# A root vertical box that includes all the widgets
+my $box_root = Gtk2::VBox->new( FALSE, 0 ) ;
+$window->add( $box_root ) ;
+$box_root->show() ;
+
+###############################################################
+#   3 SLIDERS: angle and X, Y Z axis rotation values
+###############################################################
+# Adjustment creation: an adjustment defines the value and range of the slider
+# value, lower, upper, step_increment, page_increment, page_size
+# (page_size is only useful for scrollbar widgets)
+my $adj0 = Gtk2::Adjustment->new( 0.0 , -180 , 180 , 1 , 1 , 1 ) ;
+$adj0->signal_connect("value_changed",\&Bones_rot_value,'a');
+my $adj1 = Gtk2::Adjustment->new( 1.0 , -1 , 1 , 0.01 , 0.01 , 0.01 ) ;
+$adj1->signal_connect("value_changed",\&Bones_rot_value,'x');
+my $adj2 = Gtk2::Adjustment->new( 0.0 , -1 , 1 , 0.01 , 0.01 , 0.01 ) ;
+$adj2->signal_connect("value_changed",\&Bones_rot_value,'y');
+my $adj3 = Gtk2::Adjustment->new( 0.0 , -1 , 1 , 0.01 , 0.01 , 0.01 ) ;
+$adj3->signal_connect("value_changed",\&Bones_rot_value,'z');
+
+#############
+# A rotation angle of bone $Cur_Bones_ID at keyframe $Cur_KF
+# A new horizontal box added to the vertical box and contains 2 widgets
+my $box_slider0 = Gtk2::HBox->new( FALSE, 10 ) ;
+$box_slider0->set_border_width( 10 ) ;
+$box_root->pack_start( $box_slider0, TRUE, TRUE, 0 ) ;
+$box_slider0->show() ;
+# a label
+my $label0 = Gtk2::Label->new( "a" ) ;
+$box_slider0->pack_start( $label0, FALSE, FALSE, 0 ) ;
+$label0->show() ;
+# An horizontal slider
+my $hor_scale0 = Gtk2::HScale->new( $adj0 ) ;
+$hor_scale0->set_digits( 3 ) ; 
+$box_slider0->pack_start( $hor_scale0, TRUE, TRUE, 0 ) ;
+$hor_scale0->show() ;
+
+#############
+# X rotation axis of bone $Cur_Bones_ID at keyframe $Cur_KF
+# A new horizontal box added to the vertical box and contains 2 widgets
+my $box_slider1 = Gtk2::HBox->new( FALSE, 10 ) ;
+$box_slider1->set_border_width( 10 ) ;
+$box_root->pack_start( $box_slider1, TRUE, TRUE, 0 ) ;
+$box_slider1->show() ;
+# a label
+my $label1 = Gtk2::Label->new( "x" ) ;
+$box_slider1->pack_start( $label1, FALSE, FALSE, 0 ) ;
+$label1->show() ;
+# An horizontal slider
+my $hor_scale1 = Gtk2::HScale->new( $adj1 ) ;
+$hor_scale1->set_digits( 3 ) ; 
+$box_slider1->pack_start( $hor_scale1, TRUE, TRUE, 0 ) ;
+$hor_scale1->show() ;
+
+#############
+# Y rotation axis of bone $Cur_Bones_ID at keyframe $Cur_KF
+# A new horizontal box added to the vertical box and contains 2 widgets
+my $box_slider2 = Gtk2::HBox->new( FALSE, 10 ) ;
+$box_slider2->set_border_width( 10 ) ;
+$box_root->pack_start( $box_slider2, TRUE, TRUE, 0 ) ;
+$box_slider2->show() ;
+# a label
+my $label2 = Gtk2::Label->new( "y" ) ;
+$box_slider2->pack_start( $label2, FALSE, FALSE, 0 ) ;
+$label2->show() ;
+# An horizontal slider
+my $hor_scale2 = Gtk2::HScale->new( $adj2 ) ;
+$hor_scale2->set_digits( 3 ) ; 
+$box_slider2->pack_start( $hor_scale2, TRUE, TRUE, 0 ) ;
+$hor_scale2->show() ;
+
+#############
+# Z rotation axis of bone $Cur_Bones_ID at keyframe $Cur_KF
+# A new horizontal box added to the vertical box and contains 2 widgets
+my $box_slider3 = Gtk2::HBox->new( FALSE, 10 ) ;
+$box_slider3->set_border_width( 10 ) ;
+$box_root->pack_start( $box_slider3, TRUE, TRUE, 0 ) ;
+$box_slider3->show() ;
+# a label
+my $label3 = Gtk2::Label->new( "z" ) ;
+$box_slider3->pack_start( $label3, FALSE, FALSE, 0 ) ;
+$label3->show() ;
+# An horizontal slider
+my $hor_scale3 = Gtk2::HScale->new( $adj3 ) ;
+$hor_scale3->set_digits( 3 ) ; 
+$box_slider3->pack_start( $hor_scale3, TRUE, TRUE, 0 ) ;
+$hor_scale3->show() ;
+
+# A separator
+my $separator1 = Gtk2::HSeparator->new() ;
+$box_root->pack_start( $separator1, FALSE, TRUE, 0 ) ;
+$separator1->show() ;
+
+###############################################################"
+#  Bones MENU + KF MENU + RESET BUTTON
+###############################################################"
+
+# A new horizontal box added to the vertical box and contains a manu
+my $box_menu = Gtk2::HBox->new( FALSE, 10 ) ;
+$box_menu->set_border_width( 10 ) ;
+
+#############
+# A bone menu
+my $opt = Gtk2::OptionMenu->new() ;
+my $menu = Gtk2::Menu->new() ;
+# There are as many menu items as bone IDs
+my $Bones_ID = "";
+my $item;
+foreach $Bones_ID (@Bones_ID_list) {
+    if( !$Cur_Bones_ID ) {
+	$Cur_Bones_ID = $Bones_ID;
+    }
+    $item = make_menu_item( "Bone $Bones_ID" , \&Bones_ID_menu_select, $Bones_ID ) ;
+    $menu->append( $item ) ;
+}
+# Menu receives items and is placed in the horizontal box
+$opt->set_menu( $menu ) ;
+$box_menu->pack_start( $opt, TRUE, FALSE, 0 ) ;
+$opt->show() ;
+
+#############
+# A keyframe menu
+my $optKF = Gtk2::OptionMenu->new() ;
+my $menuKF = Gtk2::Menu->new() ;
+# There are as many menu items as keyframe numbers
+my $itemKF;
+for( my $kf = 1 ; $kf <= $Nb_Keyframes ; $kf++ ) {
+    $itemKF = make_menu_item( "Keyframe $kf" , \&Bones_KF_menu_select, $kf ) ;
+    $menuKF->append( $itemKF ) ;
+}
+# Menu receives items and is placed in the horizontal box
+$optKF->set_menu( $menuKF ) ;
+$box_menu->pack_start( $optKF, TRUE, FALSE, 0 ) ;
+$optKF->show() ;
+
+#############
+#  A reset button
+# resets the rotation of bone $Cur_Bones_ID at keyframe $Cur_KF
+# to ( 0 , 1 , 0 , 0 )
+my $button_reset = Gtk2::Button->new_from_stock( "Bones-reset" ) ;
+$button_reset->signal_connect( "clicked" , \&Bones_reset ) ;
+$box_menu->pack_start( $button_reset, TRUE, FALSE, 0 ) ;
+$button_reset->can_default( TRUE ) ;
+$button_reset->show() ;
+
+$box_root->pack_start( $box_menu, FALSE, FALSE, 0 ) ;
+$box_menu->show() ;
+
+
+###############################################################"
+#  QUIT BUTTON
+###############################################################"
+
+# A separator
+my $separator = Gtk2::HSeparator->new() ;
+$box_root->pack_start( $separator, FALSE, TRUE, 0 ) ;
+$separator->show() ;
+
+# Quit button
+my $button = Gtk2::Button->new_from_stock( "gtk-quit" ) ;
+$button->signal_connect( "clicked" , \&quit_and_save ) ;
+$box_root->pack_start( $button, FALSE, FALSE, 0 ) ;
+$button->can_default( TRUE ) ;
+$button->grab_default() ;
+$button->show() ;
+$window->show() ;
+
+Bones_KF_menu_select( $itemKF , $Cur_KF );
+
+###############################################################"
+# MAIN LOOP
+###############################################################"
+Gtk2->main ;
+
+###############################################################"
+###############################################################"
+#  CALLBACK FUNCTIONS
+###############################################################"
+###############################################################"
+
+### Value access for rotation of bone $Cur_Bones_ID at keyframe $Cur_KF
+sub get_value_Bones_KF
+{
+    my ( $ID , $kf , $coord ) = @_ ;
+    my @table;
+    if( $coord eq 'a' ) {
+	@table = split( / / ,$Bones_Angle{ $Cur_Bones_ID } );
+    }
+    if( $coord eq 'x' ) {
+	@table = split( / / ,$Bones_Axis_x{ $Cur_Bones_ID } );
+    }
+    elsif( $coord eq 'y' ) {
+	@table = split( / / ,$Bones_Axis_y{ $Cur_Bones_ID } );
+    }
+    elsif( $coord eq 'z' ) {
+	@table = split( / / ,$Bones_Axis_z{ $Cur_Bones_ID } );
+    }
+    return $table[$kf - 1];
+}
+
+### Keyframe menu selection: 
+# Updates the a/x/y/z rotation of bone $Cur_Bones_ID at keyframe $Cur_KF
+# in the three sliders
+# Updates all the bone positions 
+# at keyframe $Cur_KF for the graphic engine through message emissions.
+sub Bones_KF_menu_select
+{
+    my ( $item, $kf ) = @_ ;
+    $Cur_KF = $kf;
+    # print "Cur_KF $Cur_KF\n";
+    $message_output = FALSE;
+    $adj0->set_value( get_value_Bones_KF( $Cur_Bones_ID , $Cur_KF , 'a' ) );
+    $adj1->set_value( get_value_Bones_KF( $Cur_Bones_ID , $Cur_KF , 'x' ) );
+    $adj2->set_value( get_value_Bones_KF( $Cur_Bones_ID , $Cur_KF , 'y' ) );
+    $adj3->set_value( get_value_Bones_KF( $Cur_Bones_ID , $Cur_KF , 'z' ) );
+    # triggers message emission for each bone
+    foreach $Bones_ID ( @Bones_ID_list ) {
+	my @valsa = split( / / , $Bones_Angle{ $Bones_ID } ); 
+	my @valsx = split( / / , $Bones_Axis_x{ $Bones_ID } ); 
+	my @valsy = split( / / , $Bones_Axis_y{ $Bones_ID } ); 
+	my @valsz = split( / / , $Bones_Axis_z{ $Bones_ID } ); 
+	$valsx[$Cur_KF - 1] =~ s/,/\./g;
+	$valsy[$Cur_KF - 1] =~ s/,/\./g;
+	$valsz[$Cur_KF - 1] =~ s/,/\./g;
+	my $message = sprintf "%s %d %f %f %f" , $Bones_ID , $Cur_KF ,
+	$valsx[$Cur_KF - 1] , $valsy[$Cur_KF - 1] , $valsz[$Cur_KF - 1] ;
+	if( $message ) {
+	    $message =~ s/,/\./g;
+	    my $lengthSent = send(SOCKET, $message, 0, $portaddr);
+	    # print $lengthSent . "\n" ;
+	    
+	    $lengthSent == length($message)
+		or die "cannot send to $HOSTNAME ($PORTNO) $lengthSent: $!";
+	    
+	    print "Sent: [$message]\n" ;
+	}
+    }
+}
+
+### Bone menu selection: 
+# Updates the a/x/y/z rotation of bone $Cur_Bones_ID at keyframe $Cur_KF
+# in the three sliders
+# Updates the $Cur_Bones_ID bone rotation 
+# at keyframe $Cur_KF for the graphic engine through message emission.
+sub Bones_ID_menu_select
+{
+    my ( $item, $ID ) = @_ ;
+    $Cur_Bones_ID = $ID;
+    # print "Cur_Bones_ID $Cur_Bones_ID\n";
+    $message_output = FALSE;
+    $adj0->set_value( get_value_Bones_KF( $Cur_Bones_ID , $Cur_KF , 'a' ) );
+    $adj1->set_value( get_value_Bones_KF( $Cur_Bones_ID , $Cur_KF , 'x' ) );
+    $adj2->set_value( get_value_Bones_KF( $Cur_Bones_ID , $Cur_KF , 'y' ) );
+    $adj3->set_value( get_value_Bones_KF( $Cur_Bones_ID , $Cur_KF , 'z' ) );
+    # triggers message emission
+    $message_output = TRUE;
+    &Bones_rot_value( $adj1 , 'x' );
+}
+
+### Bone rotation slider: updates the $Cur_Bones_ID bone rotation
+# at keyframe $Cur_KF for the graphic engine through message emission.
+sub Bones_rot_value
+{
+    my ( $adjustment , $coord ) = @_ ;
+    my @valsa = split( / / , $Bones_Angle{ $Cur_Bones_ID } ); 
+    my @valsx = split( / / , $Bones_Axis_x{ $Cur_Bones_ID } ); 
+    my @valsy = split( / / , $Bones_Axis_y{ $Cur_Bones_ID } ); 
+    my @valsz = split( / / , $Bones_Axis_z{ $Cur_Bones_ID } ); 
+    if( $coord eq 'a' ) {
+	$valsa[$Cur_KF - 1] = $adjustment->get_value;
+	$Bones_Angle{ $Cur_Bones_ID } = join( " " , @valsa );
+    }
+    elsif( $coord eq 'x' ) {
+	$valsx[$Cur_KF - 1] = $adjustment->get_value;
+	$valsx[$Cur_KF - 1] =~ s/,/\./g;
+	$Bones_Axis_x{ $Cur_Bones_ID } = join( " " , @valsx );
+    }
+    elsif( $coord eq 'y' ) {
+	$valsy[$Cur_KF - 1] = $adjustment->get_value;
+	$valsy[$Cur_KF - 1] =~ s/,/\./g;
+	$Bones_Axis_y{ $Cur_Bones_ID } = join( " " , @valsy );
+    }
+    elsif( $coord eq 'z' ) {
+	$valsz[$Cur_KF - 1] = $adjustment->get_value;
+	$valsz[$Cur_KF - 1] =~ s/,/\./g;
+	$Bones_Axis_z{ $Cur_Bones_ID } = join( " " , @valsz );
+    }
+    if( $message_output ) {
+	my $message = sprintf "%s %d %f %f %f %f" , $Cur_Bones_ID , $Cur_KF ,
+	$valsa[$Cur_KF - 1] , 
+	$valsx[$Cur_KF - 1] , $valsy[$Cur_KF - 1] , $valsz[$Cur_KF - 1] ;
+	if( $message ) {
+	    $message =~ s/,/\./g;
+	    my $lengthSent = send(SOCKET, $message, 0, $portaddr);
+	    # print $lengthSent . "\n" ;
+	    
+	    $lengthSent == length($message)
+		or die "cannot send to $HOSTNAME ($PORTNO) $lengthSent: $!";
+	    
+	    print "Sent: [$message]\n" ;
+	}
+    }
+}
+
+### Bone reset button: 
+# Resets to 0 the a/x/y/z rotation of bone $Cur_Bones_ID
+# at keyframe $Cur_KF in the four sliders
+# Resets to (0,1,0,0) the $Cur_Bones_ID bone rotation
+# at keyframe $Cur_KF for the graphic engine through message emission.
+sub Bones_reset
+{
+    my @valsa = split( / / , $Bones_Angle{ $Cur_Bones_ID } ); 
+    my @valsx = split( / / , $Bones_Axis_x{ $Cur_Bones_ID } ); 
+    my @valsy = split( / / , $Bones_Axis_y{ $Cur_Bones_ID } ); 
+    my @valsz = split( / / , $Bones_Axis_y{ $Cur_Bones_ID } ); 
+    $valsa[$Cur_KF - 1] = 0.0;
+    $valsx[$Cur_KF - 1] = 1.0;
+    $valsy[$Cur_KF - 1] = 0.0;
+    $valsz[$Cur_KF - 1] = 0.0;
+    $Bones_Angle{ $Cur_Bones_ID } = join( " " , @valsx );
+    $Bones_Axis_x{ $Cur_Bones_ID } = join( " " , @valsx );
+    $Bones_Axis_y{ $Cur_Bones_ID } = join( " " , @valsy );
+    $Bones_Axis_z{ $Cur_Bones_ID } = join( " " , @valsz );
+    $message_output = FALSE;
+    $adj0->set_value( 0 );
+    $adj1->set_value( 1 );
+    $adj2->set_value( 0 );
+    $adj3->set_value( 0 );
+    # triggers message emission
+    $message_output = TRUE;
+    &Bones_rot_value( $adj0 , 'a' );
+}
+
+# Menu item addition for menu construction
+sub make_menu_item
+{
+    my ( $name, $callback, $data ) = @_ ;
+    my $item ;
+    $item = Gtk2::MenuItem->new( $name ) ;
+    $item->signal_connect( "activate" , $callback, $data ) ;
+    $item->show() ;
+    return $item ;
+}
+
+# Loads the bone IDs and the tables of bone rotations 
+# at each keyframe from the .cpp tables (see file heading comments
+# for more details on this format)
+sub load_KFs { 
+    # default file name
+    my $BonesFileName = "Porl-3.obj";
+    my $Bones_ID = "";
+    my $item;
+    my $index = 0;
+
+    my $BonesFileNameAux = $BonesFileName;
+    $BonesFileNameAux =~ s/.obj//;
+    $BonesFileNameAux .= "_KF.cpp";
+
+    # reads the last output file
+    # increments a version number until no existing file is found
+    my $ID_file = 1;
+    my $lastOutputFile = "";
+    while( -e $BonesFileNameAux ) {
+	$lastOutputFile = $BonesFileNameAux;
+	$BonesFileNameAux =~ s/[0-9]*.cpp//;
+	$BonesFileNameAux .= "$ID_file.cpp";
+	$ID_file++;
+    }
+    if( !$lastOutputFile ) {
+	while( !(-e $BonesFileNameAux) ) {
+	    printf "Fichier $BonesFileNameAux non trouve\n" ;
+	    printf "Nom du fichier de keyframes: ";
+	    $BonesFileNameAux = <STDIN>;
+	    chomp $BonesFileNameAux;
+	}
+	$lastOutputFile = $BonesFileNameAux;
+    }
+
+    # scans the file
+    if( $lastOutputFile ) {
+	my $coor;
+	my $indBones;
+	my $angleAxisRotation;
+	my @angleAxisRotVect;
+	open( FILEaux , "<$lastOutputFile" ) 
+	    || die "Can't open file '$lastOutputFile'!";
+	print "Loading $lastOutputFile...\n\n";
+	while( <FILEaux> ) {
+	    # reads and stores bone IDS
+	    if( /char tab_Bones_ID.*\{\s*(.*)\s*\}/ ) {
+		my $Bones_list = $1;
+		$Bones_list =~ s/\"//g;
+		$Bones_list =~ s/\s+$//g;
+		@Bones_ID_list = split( /\s*,\s*/ , $Bones_list );
+	    }
+
+	    # reads and stores number of keyframes $Nb_Keyframes and current
+	    # coordinates ( 'x', 'y', or 'z' )
+	    elsif( /float tab_Bones_KF_([axyz])\[([0-9]+)\]\[([0-9]+)\]/ ) {
+		$coor = $1;
+		$Nb_Keyframes = $3;
+		$indBones = 0;
+	    }
+	    
+	    # reads and stores a, x, y, z rotation of bone $indBones 
+	    # at the $Nb_Keyframes keyframes
+	    elsif( /^\s*\{\s*(.*)\s*\}/ ) {
+		$angleAxisRotation = $1;
+		@angleAxisRotVect = split( /\s*,\s*/ , $angleAxisRotation );
+		if( $coor eq 'a' ) {
+		    $Bones_Angle{ $Bones_ID_list[$indBones] } 
+		    = join( " " , @angleAxisRotVect );
+		}
+		elsif( $coor eq 'x' ) {
+		    $Bones_Axis_x{ $Bones_ID_list[$indBones] } 
+		    = join( " " , @angleAxisRotVect );
+		}
+		elsif( $coor eq 'y' ) {
+		    $Bones_Axis_y{ $Bones_ID_list[$indBones] } 
+		    = join( " " , @angleAxisRotVect );
+		}
+		elsif( $coor eq 'z' ) {
+		    $Bones_Axis_z{ $Bones_ID_list[$indBones] } 
+		    = join( " " , @angleAxisRotVect );
+		}
+		$indBones++;
+	    }
+	}
+	close( FILEaux ); 
+    }
+}
+
+# Saves the bone IDs and the tables of bone positions 
+# at each keyframe through tables into a new .cpp file (see file
+# heading comments for more details on this format)
+sub quit_and_save { 
+    my $Bones_ID;
+    my $index = 0;
+    my $BonesFileName = "Porl-3_KF.cpp";
+
+    # does not overwrite the input file
+    # increments a version number until no existing file is found
+    my $ID_file = 1;
+    while( -e $BonesFileName ) {
+	$BonesFileName =~ s/[0-9]*.cpp//;
+	$BonesFileName .= "$ID_file.cpp";
+	$ID_file++;
+    }
+    
+    open( FILEaux , ">$BonesFileName" ) 
+	|| die "Can't open file '$BonesFileName'!";
+
+    # writes bone IDS
+    printf( FILEaux "char tab_Bones_ID[%d][16] = { \"%s\" };\n" , 
+	    @Bones_ID_list + 0 , join( "\" , \"" , @Bones_ID_list ) );
+
+    # writes number of keyframes and writes a rotation angle for each 
+    # bone at each keyframe
+    $index = 0;
+    printf( FILEaux "float tab_Bones_KF_a[%d][$Nb_Keyframes] = { \n" ,  
+	    @Bones_ID_list + 0 );
+    foreach $Bones_ID ( @Bones_ID_list ) {
+	my @valsa = split( / / , $Bones_Angle{ $Bones_ID } ); 
+	printf FILEaux "    { %s } " , join( " , " , @valsa ) ; 
+	if( $index < @Bones_ID_list - 1 ) {
+	    printf FILEaux " , \n";
+	}
+	else {
+	    printf FILEaux "\n }; \n";
+	}
+	$index++;
+    }
+
+    # writes number of keyframes and writes x rotation axis for each 
+    # bone at each keyframe
+    $index = 0;
+    printf( FILEaux "float tab_Bones_KF_x[%d][$Nb_Keyframes] = { \n" ,  
+	    @Bones_ID_list + 0 );
+    foreach $Bones_ID ( @Bones_ID_list ) {
+	my @valsx = split( / / , $Bones_Axis_x{ $Bones_ID } ); 
+	printf FILEaux "    { %s } " , join( " , " , @valsx ) ; 
+	if( $index < @Bones_ID_list - 1 ) {
+	    printf FILEaux " , \n";
+	}
+	else {
+	    printf FILEaux "\n }; \n";
+	}
+	$index++;
+    }
+
+    # writes number of keyframes and writes y rotation axis for each 
+    # bone at each keyframe
+    $index = 0;
+    printf( FILEaux "float tab_Bones_KF_y[%d][$Nb_Keyframes] = { \n" ,  
+	    @Bones_ID_list + 0 );
+    foreach $Bones_ID ( @Bones_ID_list ) {
+	my @valsy = split( / / , $Bones_Axis_y{ $Bones_ID } ); 
+	printf FILEaux "    { %s } " , join( " , " , @valsy ) ; 
+	if( $index < @Bones_ID_list - 1 ) {
+	    printf FILEaux " , \n";
+	}
+	else {
+	    printf FILEaux "\n }; \n";
+	}
+	$index++;
+    }
+
+    # writes number of keyframes and writes z rotation axis for each 
+    # bone at each keyframe
+    $index = 0;
+    printf( FILEaux "float tab_Bones_KF_z[%d][$Nb_Keyframes] = { \n" ,  
+	    @Bones_ID_list + 0 );
+    foreach $Bones_ID ( @Bones_ID_list ) {
+	my @valsz = split( / / , $Bones_Axis_z{ $Bones_ID } ); 
+	printf FILEaux "    { %s } " , join( " , " , @valsz ) ; 
+	if( $index < @Bones_ID_list - 1 ) {
+	    printf FILEaux " , \n";
+	}
+	else {
+	    printf FILEaux "\n }; \n";
+	}
+	$index++;
+    }
+
+    # closes output file 
+    close( FILEaux );
+
+    # quits the interface
+    Gtk2->main_quit ; 
+}
