@@ -1,0 +1,115 @@
+
+.hr0.C1{
+ height:1px;border:none;border-top:1px dashed #0066CC;
+}
+.hr1.C1{ height:10px;border:none;border-top:10px groove skyblue;}
+
+h1.C1{
+font-size:30px;
+font-family:"Times New Roman",serif;
+font-weight:bold;
+
+	}
+h2.C1{
+color:#000000;
+font-family:Helvetica,sans-serif;
+text-align:center;
+font-size:30px;
+font-weight:bold;
+	}
+/*#titre{
+
+font-family:"Times New Roman",serif;
+font-size:39px;
+color:rgb(0, 62, 133);
+line-height:78px;
+font-weight:bold;
+	}*/
+
+div.C1 {
+
+    background-image:url(../img/bg/5-120601094409-50.gif);
+    font-family: tahoma, helvetica, arial, sans-serif;
+    font-size: 10px;
+    text-align: center; 
+}
+
+.formulaire{
+ border: #CCC dashed 1px; 
+ margin-bottom:20px;
+ width:500px;
+ }
+input.commentaireA {
+ 	padding:5px 15px; background:#ccc; border:0 none;
+    cursor:pointer;
+    -webkit-border-radius: 5px;
+    border-radius: 5px; }
+td.C1{
+    font-size:19px;
+    font-family:"Times New Roman",serif;
+	border-top-width: 1px;
+	border-right-width: 1px;
+	border-bottom-width: 1px;
+	border-left-width: 1px;
+
+	border-top-color: #999999;
+	border-right-color: #999999;
+	border-bottom-color: #999999;
+	border-left-color: #999999;
+}
+.cell1{
+background :#E8F3FD; 
+width:140px;
+height:200px; 
+vertical-align:top;
+padding: 15px;
+text-align:left;
+}
+.cell2{
+width:770px;
+ height:100px;
+padding:15px;
+text-align:left;
+vertical-align:top;
+}
+.td3{
+width:200px;
+}
+.td4{
+width:280px; 
+text-align:center;
+}
+.td5{
+height:100px;
+}
+.td6{
+background :#E8F3FD; 
+width:100px;
+height:50px; 
+vertical-align:top;
+padding: 15px;
+text-align:left;
+font-size:22px;
+}
+/*.img{width:50px;height:50px;}*/
+.commentaire table {
+    margin:0px auto;
+	border-top-style: double;
+	border-right-style: double;
+	border-bottom-style: double;
+	border-left-style: double;
+	border-top-color: #000;
+	border-right-color: #000;
+	border-bottom-color: #000;
+	border-left-color: #000;
+	height:50px;
+}
+a:link{
+text-decoration:none ; 
+}
+/*#menu { width:761px; margin:0 auto; border: 0px solid #CCC; height:30px; font-size:32px; background: #eee;color:#000000;
+font-family:Times,serif;}*/
+#menu ul { list-style: none; margin: 0px; padding: 0px; } 
+#menu ul li { float:left;} 
+#menu ul li a { display:block; padding: 0px 8px; height: 26px; line-height: 26px; float:left;}
+#menu ul li a:hover { background:#0386C3; color:#fff;}

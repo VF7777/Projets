@@ -1,0 +1,12 @@
+<?php
+    include('inc/conn.php');
+    checkLogin();
+    database_connect();
+
+    for($i=1; $i<9; $i++)
+    {
+    	$value = $_POST[''.$i];
+    	mysql_query("update system set _value='".$value."' where _id=".$i);
+    }
+    echo "<script language='javascript'>alert('修改成功!');location.href='sysinfo.php';</script>";
+?>

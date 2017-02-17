@@ -1,0 +1,8 @@
+<?php
+session_start();		//启动会话
+session_unset();								
+?>
+<script>
+window.close();
+history.go(-1);
+</script>
