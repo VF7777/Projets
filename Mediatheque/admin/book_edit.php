@@ -1,0 +1,701 @@
+<?php
+session_start();
+include("config.inc.php");
+checkLogin();
+
+$action=$_GET['action'];
+$row='';
+$do = 'add';
+if($action=='rediger')
+{
+//	echo "<script>   b();   </script>";
+	$id = $_GET['id'];//valeur id viens de book_admin.php
+	$result = mysql_query("select * from ressource where IDR=".$id);
+	$row = mysql_fetch_array($result);
+	$do = 'mettreajour&id='.$id;
+	
+		
+	          $idR=$row[IDR];
+	          $query=mysql_query("select * from exemplaire where IDR=$idR");
+	          $nombreR=intval(mysql_num_rows($query)); 
+	          
+	          	        
+	          $query1=mysql_query("select * from livre,music where IDL=$idR or IDM=$idR");
+             $result_query1=mysql_fetch_array($query1);
+	        
+	        	  
+	          $query2=mysql_query("select * from DVD where IDd=$idR");
+             $result_query2=mysql_fetch_array($query2);
+	           
+}
+//$do passe la valeur pour db_book.php
+else if($action=='consulter')
+{
+
+	$id = $_GET['id'];
+	$result = mysql_query("select * from ressource where IDR=".$id);
+	$row = mysql_fetch_array($result);
+	$do = '';
+	
+	          $idR=$row[IDR];
+	          $query=mysql_query("select * from exemplaire where IDR=$idR");
+	          $nombreR=intval(mysql_num_rows($query)); 
+	          
+	          	        
+	          $query1=mysql_query("select * from livre,music where IDL=$idR or IDM=$idR");
+             $result_query1=mysql_fetch_array($query1);
+	        
+	        	  
+	          $query2=mysql_query("select * from DVD where IDd=$idR");
+             $result_query2=mysql_fetch_array($query2);
+}
+
+?>
+<!doctype html PUBLIC "-//W3C//DTD html 4.01 Transitional//EN" >
+<html lang="fr">
+  <head>
+    <meta charset="utf-8">
+    <title>Médiathèque Administrateur</title>
+    <meta content="IE=edge,chrome=1" http-equiv="X-UA-Compatible">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="">
+    <meta name="author" content="Chyfreefly" >
+    <meta http-equiv="content-type" content="text/html;charset=utf-8" />
+
+    <link rel="stylesheet" type="text/css" href="lib/bootstrap/css/bootstrap.css">
+    <link href="css/style.css" rel="stylesheet" />
+    <script src="js/admin_js.js"></script>
+    <link rel="stylesheet" type="text/css" href="stylesheets/theme.css">
+    <link rel="stylesheet" href="lib/font-awesome/css/font-awesome.css">
+
+    <script src="lib/jquery-1.7.2.min.js" type="text/javascript"></script>
+
+
+    <style type="text/css">
+        #line-chart {
+            height:300px;
+            width:800px;
+            margin: 0px auto;
+            margin-top: 1em;
+        }
+        .brand { font-family: georgia, serif; }
+        .brand .first {
+            color: #ccc;
+            font-style: italic;
+        }
+        .brand .second {
+            color: #fff;
+            font-weight: bold;
+        }
+    </style>
+
+
+    <!-- Le fav and touch icons -->
+    <link rel="shortcut icon" href="../assets/ico/favicon.ico">
+    <link rel="apple-touch-icon-precomposed" sizes="144x144" href="../assets/ico/apple-touch-icon-144-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="114x114" href="../assets/ico/apple-touch-icon-114-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" sizes="72x72" href="../assets/ico/apple-touch-icon-72-precomposed.png">
+    <link rel="apple-touch-icon-precomposed" href="../assets/ico/apple-touch-icon-57-precomposed.png">
+    
+    
+    <script language="javascript">
+
+  function a(elem){
+ 
+   if(elem.value == 'livre'){
+      document.getElementById('table1').style.display = "block";
+      document.getElementById('table2').style.display = "block";
+      document.getElementById('table3').style.display = "block";
+      
+      document.getElementById('table4').style.display = "none";
+      document.getElementById('table5').style.display = "none";
+      document.getElementById('table6').style.display = "none";
+      document.getElementById('table7').style.display = "none";
+      document.getElementById('table8').style.display = "none";
+      document.getElementById('table9').style.display = "none";
+      document.getElementById('table10').style.display = "none";
+      document.getElementById('table11').style.display = "none";
+               
+}else if(elem.value == 'music'){
+	   document.getElementById('table3').style.display = "block";
+      document.getElementById('table4').style.display = "block";
+      document.getElementById('table5').style.display = "block";
+      document.getElementById('table6').style.display = "block";
+
+      
+      document.getElementById('table1').style.display = "none";
+      document.getElementById('table2').style.display = "none";
+      document.getElementById('table7').style.display = "none";
+      document.getElementById('table8').style.display = "none";
+      document.getElementById('table9').style.display = "none";
+      document.getElementById('table10').style.display = "none";
+      document.getElementById('table11').style.display = "none";
+}else if (elem.value == 'dvd') {
+	      document.getElementById('table7').style.display = "block";
+	      document.getElementById('table8').style.display = "block";
+	      document.getElementById('table9').style.display = "block";
+	      document.getElementById('table10').style.display = "block";
+	      document.getElementById('table11').style.display = "block";
+
+         
+         document.getElementById('table1').style.display = "none";
+         document.getElementById('table2').style.display = "none";
+         document.getElementById('table3').style.display = "none";
+         document.getElementById('table4').style.display = "none";
+         document.getElementById('table5').style.display = "none";
+         document.getElementById('table6').style.display = "none";
+	       
+}
+
+}
+
+//  function b(){
+//  	
+//        document.getElementById('table6').style.display = "none";
+//         document.getElementById('table12').style.display = "none";
+//	}
+ 
+</script>
+  </head>
+
+  <body class=""> 
+    
+    <div class="navbar">
+        <div class="navbar-inner">
+                <ul class="nav pull-right">
+                    <li><a href="systeme.php" class="hidden-phone visible-tablet visible-desktop" role="button">Paramètre</a></li>
+                    
+                    <li id="fat-menu" class="dropdown">
+                        <a href="#" role="button" class="dropdown-toggle" data-toggle="dropdown">
+                            <i class="icon-user"></i> <?php echo $_SESSION[name];?>
+                            <i class="icon-caret-down"></i>
+                        </a>
+
+                        <ul class="dropdown-menu">
+                            <li class="divider visible-phone"></li>
+                            <li><a tabindex="-1" href="logout.php">Se déconnecter</a></li>
+                        </ul>
+                    </li>
+                    
+                </ul>
+                <a class="brand" href="admin_main.php"><span class="first">Médiathèque</span> <span class="second">Administrateur</span></a>
+        </div>
+    </div>
+    
+
+
+    
+    <div class="sidebar-nav">
+    
+    <a href="#error-menu2" class="nav-header collapsed" data-toggle="collapse"><i class="icon-exclamation-sign"></i>Emprunt et réservation<i class="icon-chevron-up"></i></a>
+        <ul id="error-menu2" class="nav nav-list collapse">
+           <li ><a href="admin_main.php">Emprunte</a></li>
+            <li ><a href="admin_reservation.php">Réservation</a></li>
+            <li ><a href="admin_retourLimite.php">Pas de retour après la date limite</a></li>
+        </ul>
+        
+        <a href="#dashboard-menu" class="nav-header collapsed" data-toggle="collapse"><i class="icon-dashboard"></i>Gestion du coup du coeur<i class="icon-chevron-up"></i></a>
+        <ul id="dashboard-menu" class="nav nav-list collapse">
+            <li><a href="afficheArticle.php">Afficher coups de cœur</a></li>
+            <li ><a href="article_edit.php">Ajouter un coup de coeur</a></li>          
+        </ul>
+
+        <a href="#accounts-menu" class="nav-header " data-toggle="collapse"><i class="icon-briefcase"></i>Gestion de Ressource<i class="icon-chevron-up"></i></a>
+        <ul id="accounts-menu" class="nav nav-list collapse in">
+            <li ><a href="book_admin.php">Afficher Ressource</a></li>
+            <li ><a href="book_edit.php">Ajouter un Ressource</a></li>
+            <li ><a href="admin_ressourceType.php">Gestion de type Ressource</a></li>
+            <li ><a href="admin_ressourceTypeEdit.php">Ajouter de type Ressource</a></li>
+        </ul>
+
+        <a href="#error-menu" class="nav-header collapsed" data-toggle="collapse"><i class="icon-exclamation-sign"></i>Emprunter et Retour<i class="icon-chevron-up"></i></a>
+        <ul id="error-menu" class="nav nav-list collapse">
+            <li ><a href="bookBorrow.php">Emprunter</a></li>
+            <li ><a href="bookRenew.php">Prolonger</a></li>
+            <li ><a href="bookBack.php">Retour</a></li>
+        </ul>
+
+        <a href="#legal-menu" class="nav-header collapsed" data-toggle="collapse"><i class="icon-legal"></i>Gestion de commentaire<i class="icon-chevron-up"></i></a>
+        <ul id="legal-menu" class="nav nav-list collapse">
+           <li ><a href="commentaire.php">Afficher des commentaires</a></li>
+            <li ><a href="commentaireRecherche.php">Recherche des commentaires</a></li>
+        </ul>
+        
+        <a href="#legal-menuA" class="nav-header collapsed" data-toggle="collapse"><i class="icon-legal"></i>Gestion des comptes<i class="icon-chevron-up"></i></a>
+        <ul id="legal-menuA" class="nav nav-list collapse">
+           <li ><a href="utilisateur.php">Afficher des comptes utilisateur</a></li>
+            <li ><a href="administrateur.php">Afficher des comptes Administrateur</a></li>
+            <li ><a href="MDP.php">Changer mot de passe</a></li>
+        </ul>
+
+    </div>
+
+    
+    <div class="content">
+        
+        <div class="header">
+            <div class="stats">
+    <p class="stat"><span class="number"><?php echo $number; ?></span>Article en Total</p>
+
+</div>
+
+            <h1 class="page-title">Gestion de Ressource</h1>
+        </div>
+        
+                <ul class="breadcrumb">
+            <li><a href="book_edit.php">Ajouter un ressource</a> <span class="divider">/</span></li>
+            <li class="active">List</li>
+        </ul>
+
+        <div class="container-fluid">
+            <div class="row-fluid">
+
+
+
+<table width="780" height="450" border="0" cellpadding="0" cellspacing="0" style="border: 1px solid #9CBED6; margin-top:15px;">
+	<tr>
+		<td align="center" valign="top">
+		<table width="100%" border="0" cellpadding="2" cellspacing="1" bgcolor="#CCCCCC" align="center">
+
+<tr bgcolor="#E7E7E7">
+	<td height="28"  align="center">
+	<b>Ajouter ressource</b>
+	</td>
+</tr>
+<tr align="center" bgcolor="#FAFAF1" height="22">
+	<td width="100%" colspan="">
+
+	<form name="form1" action="db_book.php?action=<?php echo $do;?>" enctype="multipart/form-data" method="post" >
+	<input type="hidden" name="dopost" value="save" />
+	<input type="hidden" name="channelid" value="1" />
+	<input type="hidden" name="id" value="2" />
+	
+	  <table width="98%"  border="0" align="center" cellpadding="2" cellspacing="2" id="needset">
+	  	    		    	   	    	        				  <!--*************************Titre**********************-->
+	    <tr>
+	      <td height="24" class="bline">
+	      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+	        <tr>
+	          <td width="90">&nbsp;Titre：</td>
+	          <td>
+	          	<input name="titre" type="text" id="titre" value="<?php echo $row['Titre'];?>" style="width:388px">
+	          </td>
+	          <td width="90"></td>
+	          <td></td>
+	        </tr>
+	      </table></td>
+	    </tr>
+	    	    		    	   	    	        				  <!--*************************Annee**********************-->
+	    <tr>
+	      <td height="24" class="bline"> 
+	      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+
+	          <tr>
+	            <td width="90">&nbsp;Année：</td>
+	            <td>
+	              <input name="annee" type="text" id="annee" style="width:160px" value="<?php echo $row['AnneeSortie'];?>" size="16"></td>
+	            <td width="90"></td>
+	            <td></td>
+	          </tr>
+	        </table>
+	
+	        </td>
+	    </tr>
+	    		    	   	    	        				  <!--*************************Empalcement**********************-->
+	    <tr>
+	      <td height="24" class="bline"> 
+	      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+
+	          <tr>
+	            <td width="90">&nbsp;Emplacement：</td>
+	            <td>
+	              <input name="emplacement" type="text" id="emplacement" style="width:160px" value="<?php echo $row['Emplacement'];?>" size="16"></td>
+	            <td width="90"></td>
+	            <td></td>
+	          </tr>
+	        </table>
+	
+	        </td>
+	    </tr>
+	    	    	   	    	        				  <!--*************************Image**********************-->
+	     <tr>
+	      <td height="24" class="bline"> 
+	      <table name='table12' id='table12' width="100%" border="0" cellspacing="0" cellpadding="0" style="display: block;">
+	
+	          <tr>
+	            <td width="90">&nbsp;Image：</td>
+	            <td>
+	            			<input type="file" name="image">
+	            			
+	            <td width="90"></td>
+	            <td></td>
+	          </tr>
+	        </table>
+	
+	        </td>
+	    </tr>
+	    
+	    	    	   	    	        				  <!--*************************Nombre**********************-->
+	    <tr>
+	      <td height="24" class="bline"> 
+	      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+	
+	          <tr>
+	            <td width="90">&nbsp;Nombre：</td>
+	            <td>
+
+	              <input name="nombre" type="text" id="nombre" style="width:160px" value="<?php echo $nombreR;?>" size="16"></td>
+	            <td width="90"></td>
+	            <td></td>
+	          </tr>
+	  
+	        </table>
+	
+	        </td>
+	    </tr>
+	    	   	    	        				  <!--*************************Prix**********************-->
+	     <tr>
+	      <td height="24" class="bline"> 
+	      <table width="100%" border="0" cellspacing="0" cellpadding="0">
+	
+	          <tr>
+	            <td width="90">&nbsp;Prix：</td>
+	            <td>
+	              <input name="prix" type="text" id="prix" style="width:160px" value="<?php echo $row['Prix'];?>" size="16"></td>
+	            <td width="90"></td>
+	            <td></td>
+	          </tr>
+	        </table>
+	
+	        </td>
+	    </tr>
+	    
+	    <!--*************************la liste menu de Type principale**********************-->
+	    <tr>
+	      <td height="24" class="bline">
+	      	<table width="100%" border="0" cellspacing="0" cellpadding="0">
+	          <tr>
+	            <td width="90">&nbsp;Type：</td>
+	            <td>
+	            
+<!--	appler la fonction pour afficher les options cachées-->
+	      <select name='type' class='type' id='type' style='width:160px'	onchange="a(this)"  >
+	      <option selected="selected">--Select Type--</option>
+
+	<?php 
+	
+	$result_type1 = mysql_query("select DISTINCT TYPE1 from ressourcetype");
+	while($r=mysql_fetch_array($result_type1))
+	{$TYPE1=$r['TYPE1'];		?>
+	             	<option value="<?php echo $TYPE1;?>" ><?php echo $TYPE1;?></option>
+	<?php 
+	
+	}
+	?>
+			</select>
+				</td>
+			</tr>
+	      </table></td>
+	      	  
+	          
+	    </tr>
+	  <!--*************************les attributs pour livre**********************-->
+	  
+	  
+	   <!--*************************Type Livre**********************-->
+     <tr>
+	      <td height="24" class="bline"> 
+	      <table name='table1' id='table1' width="100%" border="0" cellspacing="0" cellpadding="0" style="display: none;" >
+	
+	          <tr>
+	            <td width="90">&nbsp;TypeLivre：</td>
+	            <td>
+	     <select name='typelivre' id='typelivre' class="class" style='width:160px' >	
+	     <option selected="selected">--Select Sous-Type Livre--</option>
+	<?php 
+	
+	$result_type2 = mysql_query("select DISTINCT TYPE2 from ressourcetype where TYPE1='livre'");
+	while($r2=mysql_fetch_array($result_type2))
+	{?>
+	             	<option value="<?php echo $r2['TYPE2'];?>" ><?php echo $r2['TYPE2'];;?></option>
+	<?php 
+	
+	}
+	?>
+	     </select>
+	          </td>
+	          
+	         
+	          </tr>
+	        </table>
+	
+	        </td>
+	    </tr>
+	    	<!--*************************Auteur**********************-->
+	      <tr>
+	      <td height="24" class="bline"> 
+	      <table name='table2' id='table2' width="100%" border="0" cellspacing="0" cellpadding="0" style="display: none;">
+	
+	          <tr>
+	            <td width="90">&nbsp;Auteur：</td>
+	            <td>
+
+	              <input name="auteur" type="text" id="auteur" style="width:160px" value="<?php echo  $result_query1['Auteur'];?>" size="16"></td>
+	            <td width="90"></td>
+	            <td></td>
+	          </tr>
+	  
+	        </table>
+	
+	        </td>
+	    </tr>
+	   	   	    	        				  <!--*************************Editeur**********************-->
+	      <tr>
+	      <td height="24" class="bline"> 
+	      <table name='table3' id='table3' width="100%" border="0" cellspacing="0" cellpadding="0" style="display: none;">
+	
+	          <tr>
+	            <td width="90">&nbsp;Editeur：</td>
+	            <td>
+	              <input name="editeur" type="text" id="editeur" style="width:160px" value="<?php echo $result_query1['EditeurL'];echo $result_query1['EditeurM'];?>" size="16"></td>
+	            <td width="90"></td>
+	            <td></td>
+	          </tr>
+	  
+	        </table>
+	
+	        </td>
+	    </tr>
+	    
+	    <!--*************************les attributs pour music**********************-->
+	   	    	        				  <!--*************************type Music**********************-->
+     <tr>
+	      <td height="24" class="bline"> 
+	      <table name='table4' id='table4' width="100%" border="0" cellspacing="0" cellpadding="0" style="display: none;" >
+	
+	          <tr>
+	            <td width="90">&nbsp;TypeMusic：</td>
+	            <td>
+	     <select name='typemusic' id='typemusic' class="class" style='width:160px' >	
+	     <option selected="selected">--Select Sous-Type Livre--</option>
+	<?php 
+	
+	$result_type3 = mysql_query("select DISTINCT TYPE2 from ressourcetype where TYPE1='music'");
+	while($r3=mysql_fetch_array($result_type3))
+	{?>
+	             	<option value="<?php echo $r3['TYPE2'];?>" ><?php echo $r3['TYPE2'];;?></option>
+	<?php 
+	
+	}
+	?>
+	     </select>
+	          </td>
+	          </tr>
+	        </table>
+	
+	        </td>
+	    </tr>
+	    	   	    	        				  <!--*************************Artiste**********************-->
+	      <tr>
+	      <td height="24" class="bline"> 
+	      <table name='table5' id='table5' width="100%" border="0" cellspacing="0" cellpadding="0" style="display: none;">
+
+	          <tr>
+	            <td width="90">&nbsp;Artiste：</td>
+	            <td>
+	              <input name="artiste" type="text" id="artiste" style="width:160px" value="<?php echo $result_query1['Artiste'];?>" size="16"></td>
+	            <td width="90"></td>
+	            <td></td>
+	          </tr>
+	  
+	        </table>
+	
+	        </td>
+	    </tr>
+	    
+	   	    	        				  <!--*************************FichierMusique**********************-->
+	      <tr>
+	      <td height="24" class="bline"> 
+	      <table name='table6' id='table6' width="100%" border="0" cellspacing="0" cellpadding="0" style="display: none;">
+	
+	          <tr>
+	            <td width="90">&nbsp;FichierMusique：</td>
+	            <td>
+	              <input name="music" type="file" id="music" style="width:160px" size="16"></td>
+	            <td width="90"></td>
+	            <td></td>
+	          </tr>
+	  
+	        </table>
+	
+	        </td>
+	    </tr>
+
+	    <!--*************************les attributs pour dvd**********************-->
+	    
+	    
+<!--*************************la liste menu de TypeDVD**********************-->
+     	      <tr>
+     <td height="24" class="bline"> 
+	      <table name='table7' id='table7' width="100%" border="0" cellspacing="0" cellpadding="0" style="display: none;" >
+	
+	          <tr>
+	            <td width="90">&nbsp;TypeDVD：</td>
+	            <td>
+	     <select name='typedvd' id='typedvd' class="class" style='width:160px' >	
+	     <option selected="selected">--Select Sous-Type DVD--</option>
+	<?php 
+	
+	$result_type4 = mysql_query("select DISTINCT TYPE2 from ressourcetype where TYPE1='dvd'");
+	while($r4=mysql_fetch_array($result_type4))
+	{?>
+	             	<option value="<?php echo $r4['TYPE2'];?>" ><?php echo $r4['TYPE2'];;?></option>
+	<?php 
+	
+	}
+	?>
+	     </select>
+	          </td>
+	          </tr>
+	        </table>
+	
+	        </td>
+	        	      </tr>
+	        				  <!--*************************la fin de la liste menu de TypeDVD**********************-->
+	        				  <!--*************************Réalisateur**********************-->
+	       <tr>
+	       <td height="24" class="bline"> 
+	       <table name='table8' id='table8' width="100%" border="0" cellspacing="0" cellpadding="0" style="display: none;">
+
+	          <tr>
+	            <td width="90">&nbsp;Réalisateur：</td>
+	            <td>
+	              <input name="realisateur" type="text" id="realisateur" style="width:160px" value="<?php echo $result_query2['Realisateur'];?>" size="16"></td>
+	            <td width="90"></td>
+	            <td></td>
+	          </tr>
+	  
+	        </table>
+	
+	        </td>
+	    
+	    </tr>
+	    	        				  <!--*************************la fin de Réalisateur**********************-->
+	    	        				  
+	    	        				   <!--*************************Acteur**********************-->
+	       <tr>
+	       <td height="24" class="bline"> 
+	       <table name='table9' id='table9' width="100%" border="0" cellspacing="0" cellpadding="0" style="display: none;">
+	
+	          <tr>
+	            <td width="90">&nbsp;Acteur：</td>
+	            <td>
+	              <input name="acteur" type="text" id="acteur" style="width:160px" value="<?php echo $result_query2['Acteur'];?>" size="16"></td>
+	            <td width="90"></td>
+	            <td></td>
+	          </tr>
+	  
+	        </table>
+	
+	        </td>
+	    
+	    </tr>
+	    	        				  <!--*************************la fin de acteur**********************-->
+	    	        				  <!--*************************Duree**********************-->
+	       <tr>
+	       <td height="24" class="bline"> 
+	       <table name='table10' id='table10' width="100%" border="0" cellspacing="0" cellpadding="0" style="display: none;">
+	
+	          <tr>
+	            <td width="90">&nbsp;Durée：</td>
+	            <td>
+	              <input name="duree" type="text" id="duree" style="width:160px" value="<?php echo $result_query2['Duree'];?>" size="16"></td>
+	            <td width="90"></td>
+	            <td></td>
+	          </tr>
+	  
+	        </table>
+	
+	        </td>
+	    
+	    </tr>
+
+	    	        				  <!--*************************Video**********************-->
+	       <tr>
+	       <td height="24" class="bline"> 
+	       <table name='table11' id='table11' width="100%" border="0" cellspacing="0" cellpadding="0" style="display: none;">
+	
+	          <tr>
+	            <td width="90">&nbsp;Vidéo(lien youtube)：</td>
+	            <td>
+	              <input name="video" type="text" id="video" style="width:388px" value="<?php echo $result_query2['Ressource'];?>" size="16"></td>
+	            <td width="90"></td>
+	            <td></td>
+	          </tr>
+	  
+	        </table>
+	
+	        </td>
+	    
+	    </tr>
+
+	    <!--****************************Description*******************************-->
+	    <tr>
+	      <td height="24" bgcolor="#F1F5F2">&nbsp;Description：</td>
+	    </tr>
+	    <tr>
+	      <td  align="center"><textarea name="description" cols="80"
+				rows="10"><?php echo $row['Description'];?></textarea>
+	
+				    </td>
+	    </tr>
+	      </table>
+	<?php if($action!='consulter'){?>
+	<table width="98%" border="0" align="center" cellpadding="0" cellspacing="0">
+	  <tr>
+	      <td width="45%" align="right"><input type="reset" value="Reset"></td>
+	      <td width="5%" ></td>
+	      <td width="45%" align="left"><input type="submit" value="Upload"></td>
+	  </tr>
+	
+	</table>
+	<?php }?>
+
+	</form>
+	</td>
+</tr>
+</table> 
+
+		</td>
+	</tr>
+</table>
+
+
+
+<!--***********************************************************************************-->
+                    <footer>
+                        <hr>
+                        
+                        <p class="pull-right">Médiathèque</a> de Yang, Yiran, Edgar</p>
+
+                        <p>&copy; 2015 Yang</a></p>
+                    </footer>
+                    
+            </div>
+        </div>
+    </div>
+    
+
+
+    <script src="lib/bootstrap/js/bootstrap.js"></script>
+    <script type="text/javascript">
+        $("[rel=tooltip]").tooltip();
+        $(function() {
+            $('.demo-cancel-click').click(function(){return false;});
+        });
+    </script>
+    
+  </body>
+</html>
+
+
